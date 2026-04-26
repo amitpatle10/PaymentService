@@ -4,8 +4,21 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/amitpatle/paymentservice/adapter"
 	"github.com/amitpatle/paymentservice/models"
+	"github.com/amitpatle/paymentservice/provider"
 )
+
+// processPayment accepts any PaymentProvider — Mock, Stripe, Razorpay, anything.
+// It doesn't know or care which one it gets. That's the power of the interface.
+func processPayment(p provider.PaymentProvider, req provider.ChargeRequest) {
+	err := p.Charge(req)
+	if err != nil {
+		fmt.Printf("Payment failed: %s\n", err)
+		return
+	}
+	fmt.Println("Payment successful!")
+}
 
 func main() {
 	fmt.Println("PaymentService starting...")
@@ -20,8 +33,14 @@ func main() {
 		CreatedAt: time.Now(),
 	}
 
-	fmt.Printf("Payment ID: %s\n", p.ID)
-	fmt.Printf("Amount: %.2f %s\n", p.Amount, p.Currency)
-	fmt.Printf("Status: %s\n", p.Status)
-	fmt.Printf("Created: %s\n", p.CreatedAt.Format("2006-01-02 15:04:05"))
+	req := provider.ChargeRequest{
+		Payment:        p,
+		IdempotencyKey: "idem_key_001",
+	}
+
+	fmt.Println("--- Using Mock Provider ---")
+	processPayment(adapter.MockProvider{}, req)
+
+	fmt.Println("--- Using Stripe Provider ---")
+	processPayment(adapter.StripeProvider{APIKey: "sk_test_abc123"}, req)
 }
